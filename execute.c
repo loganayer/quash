@@ -22,10 +22,18 @@
  */
 #define IMPLEMENT_ME()                                                  \
   fprintf(stderr, "IMPLEMENT ME: %s(line %d): %s()\n", __FILE__, __LINE__, __FUNCTION__)
+#define READ_END 0
+#define WRITE_END 1
+static int enviroment_pipes[2][2];
+static int prev_pipe = -1;
+static int next_pipe =0;
+
+
 
 /***************************************************************************
  * Interface Functions
  ***************************************************************************/
+
 
 // Return a string containing the current working directory.
 char* get_current_directory(bool* should_free) {
@@ -178,7 +186,7 @@ void run_kill(KillCommand cmd) {
 // Prints the current working directory to stdout
 void run_pwd() {
   char* pwd = get_current_directory(NULL);
-  printf("%s", pwd);
+printf("%s", pwd);
 
   // Flush the buffer before returning
   fflush(stdout);
@@ -313,17 +321,35 @@ void create_process(CommandHolder holder) {
   (void) r_app; // Silence unused variable warning
 
   // TODO: Setup pipes, redirects, and new process
-  pid_t pid;
-  
-  pid = fork();
-  if (pid == 0)
+if(p_out){
+pipe(enviroment_pipes[next_pipe]);
+}
+//int fd[2]; 
+ pid_t pid;
+pid = fork();  
+  if (0 == pid)
   {
+         if(p_in){
+   dup2(enviroment_pipes[prev_pipe][READ_END], STDIN_FILENO);
+   close(enviroment_pipes[next_pipe][WRITE_END]);
+}
+if(p_out){
+dup2(enviroment_pipes[next_pipe][WRITE_END], STDOUT_FILENO);
+close(enviroment_pipes[next_pipe][READ_END]);
+}
+//        dup2(fd[1], STDOUT_FILENO);
+ //       close(fd[0]);
+//	close(fd[1]);
 	child_run_command(holder.cmd);
 	exit (EXIT_SUCCESS);
-  } 
-  else
-  {
+  }  else {
+    if(p_in){
+close(enviroment_pipes[next_pipe][WRITE_END]);
+}
+next_pipe = (next_pipe+1)%2;
+prev_pipe = (prev_pipe+1)%2;
 	parent_run_command(holder.cmd); 
+return;
   }
 
   //parent_run_command(holder.cmd); // This should be done in the parent branch of
