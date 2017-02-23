@@ -32,12 +32,13 @@ char* get_current_directory(bool* should_free) {
   // Change this to true if necessary
   *should_free = false;
 
+  //system call to get the current working directory
   return getcwd( NULL, PATH_MAX + 1 );
 }
 
 // Returns the value of an environment variable env_var
 const char* lookup_env(const char* env_var) {
-	
+  //system call to get the environment variable env_var
   return getenv(env_var);
 }
 
@@ -177,10 +178,11 @@ void run_kill(KillCommand cmd) {
 // Prints the current working directory to stdout
 void run_pwd() {
   char* pwd = get_current_directory(NULL);
-  printf(pwd);
+  printf("%s", pwd);
 
   // Flush the buffer before returning
   fflush(stdout);
+  return;
 }
 
 // Prints all background jobs currently in the job list to stdout
@@ -311,7 +313,18 @@ void create_process(CommandHolder holder) {
   (void) r_app; // Silence unused variable warning
 
   // TODO: Setup pipes, redirects, and new process
-  IMPLEMENT_ME();
+  pid_t pid;
+  
+  pid = fork();
+  if (pid == 0)
+  {
+	child_run_command(holder.cmd);
+	exit (EXIT_SUCCESS);
+  } 
+  else
+  {
+	parent_run_command(holder.cmd); 
+  }
 
   //parent_run_command(holder.cmd); // This should be done in the parent branch of
                                   // a fork
