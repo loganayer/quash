@@ -27,19 +27,27 @@
 #define WRITE_END 1
 static int enviroment_pipes[2][2];
 static int prev_pipe = -1;
-static int next_pipe =0;
+static int next_pipe = 0;
+//variable to hold what job we are on, need to increment it as we add jobs
+int current_jobid = 0;
 
+//Create our PID queue for a specific job
+IMPLEMENT_DEQUE_STRUCT(process_queue, int);
+IMPLEMENT_DEQUE(process_queue, int);
 
-
-//IMPLEMENT_DEQUE_STRUCT(pid_queue, pid_t);
-//IMPLEMENT_DEQUE(pid_queue, pid_t);
-//PID_QUEUE pid_queue;
-
-typedef struct job_struct{
+//job struct to hold job info and underlying processes
+typedef struct job_t{
 	int job_id;
 	char *cmd;
-	pid_t pids;
+	static process_queue *pid_queue;;
 } job_t;
+
+//create out JOB queue structure to hold background jobs
+IMPLEMENT_DEQUE_STRUCT(job_queue, job_t);
+IMPLEMENT_DEQUE(job_queue, job_t);
+
+//instantiate static pointer to background jobs queue
+static job_queue *background_job_queue;
 
 /***************************************************************************
  * Interface Functions
@@ -67,6 +75,10 @@ void check_jobs_bg_status() {
 	// jobs. This function should remove jobs from the jobs queue once all
 	// processes belonging to a job have completed.
 	IMPLEMENT_ME();
+	
+	//Look at all jobs in the job queue and check the status of the PIDs in there,
+	//If a PID has reported it is finished, pop it from the PID queue
+	//If the PID queue is empty, pop that JOB from the JOB queue
 
 	// TODO: Once jobs are implemented, uncomment and fill the following line
 	// print_job_bg_complete(job_id, pid, cmd);
@@ -187,6 +199,10 @@ void run_kill(KillCommand cmd) {
 
 	// TODO: Kill all processes associated with a background job
 	IMPLEMENT_ME();
+	
+	//Go to the job queue and find the item with ID = cmd.job then send the cmd.sig to all those PID in that pid queue
+	//and pop those til the PID queue is empty
+	//then pop the job out of the queue
 }
 
 
@@ -210,6 +226,9 @@ void run_pwd() {
 void run_jobs() {
 	// TODO: Print background jobs
 	IMPLEMENT_ME();
+	
+	//Loop through the JOB QUEUE and print out the info as in the description
+	//this should be pretty simple hopefully
 
 	// Flush the buffer before returning
 	fflush(stdout);
@@ -318,6 +337,8 @@ void parent_run_command(Command cmd) {
  * @sa Command CommandHolder
  */
 void create_process(CommandHolder holder) {
+	//this method needs to push PID to the pid queue to add to a job
+	
 	// Read the flags field from the parser
 	bool p_in  = holder.flags & PIPE_IN;
 	bool p_out = holder.flags & PIPE_OUT;
@@ -325,6 +346,9 @@ void create_process(CommandHolder holder) {
 	bool r_out = holder.flags & REDIRECT_OUT;
 	bool r_app = holder.flags & REDIRECT_APPEND; // This can only be true if r_out
 
+	
+	//Add comments if possible in this area
+	
 	if(p_out){
 		pipe(enviroment_pipes[next_pipe]);
 	}
@@ -407,16 +431,18 @@ void run_script(CommandHolder* holders) {
 
 	if (!(holders[0].flags & BACKGROUND)) {
 		// Not a background Job
-		// TODO: Wait for all processes under the job to complete
+		// Wait for all processes under the job to complete
 		int stall;
 		waitpid(-1,&stall,0);
-		//	IMPLEMENT_ME();
 	}
 	else {
 		// A background job.
 		// TODO: Push the new job to the job queue
 		IMPLEMENT_ME();
 
+		//this is where you add to the job queue, youll take the created PID queue
+		//from above and create a job, then add the job to the JOB queue
+		
 		// TODO: Once jobs are implemented, uncomment and fill the following line
 		// print_job_bg_start(job_id, pid, cmd);
 	}
