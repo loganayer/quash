@@ -33,7 +33,6 @@ static int next_pipe =0;
 
 //IMPLEMENT_DEQUE_STRUCT(pid_queue, pid_t);
 //IMPLEMENT_DEQUE(pid_queue, pid_t);
-//SOMETHING LIKE THIS
 //PID_QUEUE pid_queue;
 
 typedef struct job_struct{
@@ -117,13 +116,13 @@ void run_echo(EchoCommand cmd) {
 	// string is always NULL) list of strings.
 	char** str = cmd.args;
 
-	//Iterate through array printing each string 
+	//Iterate through array printing each string
 	while(*str)
 	{
 		printf( "%s ", *str++ );
-	}	
+	}
 	printf("\n");
-	
+
 	// Flush the buffer before returning
 	fflush(stdout);
 }
@@ -195,10 +194,10 @@ void run_kill(KillCommand cmd) {
 void run_pwd() {
 	//create a buffer to hold our CWD
 	char buffer[PATH_MAX+1];
-	
+
 	//system call to get CWD
 	char* pwd = getcwd(buffer, PATH_MAX+1);
-	
+
 	//Simply print
 	printf("%s\n", pwd);
 
@@ -325,22 +324,28 @@ void create_process(CommandHolder holder) {
 	bool r_in  = holder.flags & REDIRECT_IN;
 	bool r_out = holder.flags & REDIRECT_OUT;
 	bool r_app = holder.flags & REDIRECT_APPEND; // This can only be true if r_out
+
 	if(p_out){
 		pipe(enviroment_pipes[next_pipe]);
 	}
+
 	pid_t pid;
 	int fd;
 	pid = fork();
-	if (0 == pid)
+
+	if (pid == 0)
 	{
-		if(p_in){
-			dup2(enviroment_pipes[prev_pipe][READ_END], STDIN_FILENO);
-			close(enviroment_pipes[prev_pipe][WRITE_END]);
-		}
+
 		if(p_out){
 			dup2(enviroment_pipes[next_pipe][WRITE_END], STDOUT_FILENO);
 			close(enviroment_pipes[next_pipe][READ_END]);
 		}
+
+		if(p_in){
+			dup2(enviroment_pipes[prev_pipe][READ_END], STDIN_FILENO);
+			close(enviroment_pipes[prev_pipe][WRITE_END]);
+		}
+
 		if(r_in){
 			char* input = holder.redirect_in;
 			fd = open(input, O_RDONLY);
@@ -348,33 +353,35 @@ void create_process(CommandHolder holder) {
 			close(fd);
 		}
 
-		if(r_out){		
+		if(r_out){
+			FILE* file;
 			char* output = holder.redirect_out;
-			//redirect_in is the input redirect_out is name of file
 			if(r_app){
-				FILE *f = fopen(output, "a");
-fflush(stdout);
-				dup2(fileno(f),STDOUT_FILENO);
+				file = fopen(output, "a");
+				dup2(fileno(file),STDOUT_FILENO);
 			}
-			else	{ //reading output cat a.txt
-				fd = open(output, O_WRONLY | O_TRUNC | O_CREAT, S_IRUSR | S_IWUSR);           
-fflush(stdout);	
-			dup2(fd,STDOUT_FILENO);
+			else	{
+				file =fopen(output,"w");
+				dup2(fileno(file),STDOUT_FILENO);
 			}
-			close(fd);
+			fclose(file);
 		}
+
 		child_run_command(holder.cmd);
 		exit (EXIT_SUCCESS);
 	}
 	else {
-	//	int status;
-	//	waitpid(-1,&status,0);
+		int status;
+		waitpid(-1,&status,0);
+		if(p_in){
+			close(enviroment_pipes[prev_pipe][0]);
+		}
 		if(p_out){
 			close(enviroment_pipes[next_pipe][WRITE_END]);
 		}
 		next_pipe = (next_pipe+1)%2;
 		prev_pipe = (prev_pipe+1)%2;
-		parent_run_command(holder.cmd); 
+		parent_run_command(holder.cmd);
 		return;
 	}
 }
@@ -402,8 +409,8 @@ void run_script(CommandHolder* holders) {
 		// Not a background Job
 		// TODO: Wait for all processes under the job to complete
 		int stall;
-		waitpid(-1,&stall,0);	
-	//	IMPLEMENT_ME();
+		waitpid(-1,&stall,0);
+		//	IMPLEMENT_ME();
 	}
 	else {
 		// A background job.
