@@ -332,7 +332,6 @@ void create_process(CommandHolder holder) {
 		}
 		if(r_in){
 			char* input = holder.redirect_in;
-			
 			fd = open(input, O_RDONLY);
 			dup2(fd, STDIN_FILENO);
 			close(fd);
@@ -340,23 +339,25 @@ void create_process(CommandHolder holder) {
 
 		if(r_out){		
 			char* output = holder.redirect_out;
-
+			//redirect_in is the input redirect_out is name of file
 			if(r_app){
-				fd = open(output, O_APPEND | O_TRUNC | O_CREAT, S_IRUSR | S_IWUSR);           				
+				FILE *f = fopen(output, "a");
+fflush(stdout);
+				dup2(fileno(f),STDOUT_FILENO);
 			}
-			else
-			{
+			else	{ //reading output cat a.txt
 				fd = open(output, O_WRONLY | O_TRUNC | O_CREAT, S_IRUSR | S_IWUSR);           
+fflush(stdout);	
+			dup2(fd,STDOUT_FILENO);
 			}
-			
-			dup2(fd, STDOUT_FILENO);
 			close(fd);
 		}
-		
 		child_run_command(holder.cmd);
 		exit (EXIT_SUCCESS);
 	}
 	else {
+	//	int status;
+	//	waitpid(-1,&status,0);
 		if(p_out){
 			close(enviroment_pipes[next_pipe][WRITE_END]);
 		}
@@ -389,7 +390,9 @@ void run_script(CommandHolder* holders) {
 	if (!(holders[0].flags & BACKGROUND)) {
 		// Not a background Job
 		// TODO: Wait for all processes under the job to complete
-		IMPLEMENT_ME();
+		int stall;
+		waitpid(-1,&stall,0);	
+	//	IMPLEMENT_ME();
 	}
 	else {
 		// A background job.
