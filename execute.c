@@ -109,29 +109,28 @@ void run_echo(EchoCommand cmd) {
 	// string is always NULL) list of strings.
 	char** str = cmd.args;
 
-	// TODO: Remove warning silencers
-	(void) str; // Silence unused variable warning
-
-	// TODO: Implement echo
-	IMPLEMENT_ME();
-
+	//Iterate through array printing each string 
+	while(*str)
+	{
+		printf( "%s ", *str++ );
+	}	
+	printf("\n");
+	
 	// Flush the buffer before returning
 	fflush(stdout);
 }
 
 // Sets an environment variable
 void run_export(ExportCommand cmd) {
-	// Write an environment variable
-	const char* env_var = cmd.env_var;
-	const char* val = cmd.val;
+  // Write an environment variable
+  const char* env_var = cmd.env_var;
+  const char* val = cmd.val;
 
-	// TODO: Remove warning silencers
-	(void) env_var; // Silence unused variable warning
-	(void) val;     // Silence unused variable warning
-
-	// TODO: Implement export.
-	// HINT: This should be quite simple.
-	IMPLEMENT_ME();
+  if (setenv(env_var, val, 1) == -1)
+  {
+	  perror("ERROR: ");
+	  return;
+  }
 }
 
 // Changes the current working directory
@@ -186,9 +185,13 @@ void run_kill(KillCommand cmd) {
 
 // Prints the current working directory to stdout
 void run_pwd() {
-	//char* pwd = get_current_directory(NULL);
-	char buff[PATH_MAX+1];
-	char* pwd = getcwd(buff, PATH_MAX+1);
+	//create a buffer to hold our CWD
+	char buffer[PATH_MAX+1];
+	
+	//system call to get CWD
+	char* pwd = getcwd(buffer, PATH_MAX+1);
+	
+	//Simply print
 	printf("%s\n", pwd);
 
 	// Flush the buffer before returning
@@ -318,49 +321,41 @@ void create_process(CommandHolder holder) {
 		pipe(enviroment_pipes[next_pipe]);
 	}
 	pid_t pid;
-	pid = fork();
 	int fd;
-	char FileReadFrom[1024];
-	getcwd(FileReadFrom, 1024);
-	strcat(FileReadFrom, "/");
-	char fileWrittenTo[1024];
-	getcwd(fileWrittenTo, 1024);
-	strcat(fileWrittenTo, "/");
+	pid = fork();
 	if (0 == pid)
 	{
 		if(p_in){
 			dup2(enviroment_pipes[prev_pipe][READ_END], STDIN_FILENO);
-			close(enviroment_pipes[next_pipe][WRITE_END]);
+			close(enviroment_pipes[prev_pipe][WRITE_END]);
 		}
 		if(p_out){
 			dup2(enviroment_pipes[next_pipe][WRITE_END], STDOUT_FILENO);
 			close(enviroment_pipes[next_pipe][READ_END]);
 		}
-
 		if(r_in){
 			char* input = holder.redirect_in;
-			strcat(FileReadFrom,input); //LOGAN, do u think this would work?			
-			//fd = open(input, O_CREAT, S_IRUSR | S_IWUSR);
+			
+			fd = open(input, O_RDONLY);
+			dup2(fd, STDIN_FILENO);
+			close(fd);
 		}
 
 		if(r_out){		
 			char* output = holder.redirect_out;
 
 			if(r_app){
-strcat(fileWrittenTo,output);
-				fd = open(output, O_APPEND, S_IRUSR | S_IWUSR);           
-				dup2(fd,1);
-				close(fd);		
-			}	 
-			if(!r_app){
-strcat(fileWrittenTo,output);
-
-				fd = open(output, O_WRONLY, S_IRUSR | S_IWUSR);           
-				dup2(fd,1);
-				close(fd);		
-			}	 
-
+				fd = open(output, O_APPEND | O_TRUNC | O_CREAT, S_IRUSR | S_IWUSR);           				
+			}
+			else
+			{
+				fd = open(output, O_WRONLY | O_TRUNC | O_CREAT, S_IRUSR | S_IWUSR);           
+			}
+			
+			dup2(fd, STDOUT_FILENO);
+			close(fd);
 		}
+		
 		child_run_command(holder.cmd);
 		exit (EXIT_SUCCESS);
 	}
