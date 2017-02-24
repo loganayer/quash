@@ -31,6 +31,17 @@ static int next_pipe =0;
 
 
 
+//IMPLEMENT_DEQUE_STRUCT(pid_queue, pid_t);
+//IMPLEMENT_DEQUE(pid_queue, pid_t);
+//SOMETHING LIKE THIS
+//PID_QUEUE pid_queue;
+
+typedef struct job_struct{
+	int job_id;
+	char *cmd;
+	pid_t pids;
+} job_t;
+
 /***************************************************************************
  * Interface Functions
  ***************************************************************************/
